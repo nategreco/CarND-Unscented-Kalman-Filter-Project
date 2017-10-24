@@ -24,10 +24,10 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
+  std_a_ = 1.75;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 0.45;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -60,12 +60,52 @@ UKF::~UKF() {}
  * either radar or laser.
  */
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
-  /**
-  TODO:
 
-  Complete this function! Make sure you switch between lidar and radar
-  measurements.
-  */
+  //Check if initialized
+  if (!is_initialized_) {
+    //Covariance matrix
+	P_ << 1, 0, 0, 0, 0,
+	      0, 1, 0, 0, 1,
+		  0, 0, 1, 0, 0,
+		  0, 0, 0, 1, 0,
+		  0, 0, 0, 0, 1;
+
+	//Use initial measurement for initialization
+	if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
+      //Convert to cartesian coordinates
+      double px = measurement_pack.raw_measurements_[0] * cos(measurement_pack.raw_measurements_[1]); 
+      double py = measurement_pack.raw_measurements_[0] * sin(measurement_pack.raw_measurements_[1]);
+      double vx = measurement_pack.raw_measurements_[2] * cos(measurement_pack.raw_measurements_[1]);
+      double vy = measurement_pack.raw_measurements_[2] * sin(measurement_pack.raw_measurements_[1]);
+      double v  = sqrt(vx * vx + vy * vy);
+      x_ << px, py, v, 0, 0;
+    }
+    else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
+      //Already cartesian, but due to lack of information assume initial velocties zero
+      x_ << measurement_pack.raw_measurements_[0], measurement_pack.raw_measurements_[1], 0, 0, 0;
+	  //Prevent division by zero
+      if (fabs(x[0]) < 0.0001 && fabs(x[1]) < 0.0001) {
+	    x_[0] = 0.0001;
+	    x_[1] = 0.0001;
+	  }
+    }
+  }
+  
+  //Get time elapsed  in seconds
+  double dt = (measurement_pack.timestamp_ - time_us_) / 1000000.0;
+  time_us_ = measurement_pack.timestamp_;
+  
+  //Predict
+  Prediction(dt);
+  
+  //Update
+  if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR && use_radar_) {
+	  UpdateRadar(measurement_pack);
+  }
+  if (measurement_pack.sensor_type_ == MeasurementPackage::LASER && use_laser_) {
+	  UpdateLidar(measurement_pack);
+  }
+
 }
 
 /**
