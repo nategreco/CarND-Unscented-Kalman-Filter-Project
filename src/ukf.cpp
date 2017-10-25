@@ -93,6 +93,7 @@ UKF::~UKF() {}
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   //Check if initialized
   if (!is_initialized_) {
+    std::cout << "Initializing UKF..." << std::endl;
     //Use initial measurement for initialization
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       //Convert to cartesian coordinates
@@ -132,7 +133,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_) {
       UpdateLidar(meas_package, Xsig_pred);
   }
-
 }
 
 /**
@@ -218,12 +218,15 @@ MatrixXd UKF::Prediction(double delta_t) {
   //Predict Mean and Covraiance
   x_.fill(0.0);
   P_.fill(0.0);
-  for (int i = 0; i < n_sig_; i++) {
+  for (int i = 0; i < n_sig_; ++i) {
     x_ = x_ + weights_[i] * Xsig_pred.col(i);
     VectorXd x_diff = Xsig_pred.col(i) - x_;
     //Normalize angle
-    while (x_diff[3] > M_PI) x_diff[3] -= 2.0 * M_PI;
-    while (x_diff[3] <-M_PI) x_diff[3] += 2.0 * M_PI;
+    if (x_diff[3] > M_PI) {
+      x_diff[3] -= 2.0 * M_PI;
+    } else if (x_diff[3] <-M_PI) {
+      x_diff[3] += 2.0 * M_PI;
+    }
     P_ = P_ + weights_[i] * x_diff * x_diff.transpose() ;
   }
   
@@ -300,24 +303,33 @@ void UKF::Update(MeasurementPackage meas_package,
   for (int i = 0; i < n_sig_; ++i) {
     //residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
-    //angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-    while (z_diff(1) <-M_PI) z_diff(1) += 2.0 * M_PI;
+    //Normalize angle
+    if (z_diff[1] > M_PI) {
+      z_diff[1] -= 2.0 * M_PI;
+    } else if (z_diff[1] <-M_PI) {
+      z_diff[1] += 2.0 * M_PI;
+    }
     // state difference
     VectorXd x_diff = Xsig_pred.col(i) - x_;
-    //angle normalization
-    while (x_diff(3) > M_PI) x_diff(3) -= 2.0 * M_PI;
-    while (x_diff(3) <-M_PI) x_diff(3) += 2.0 * M_PI;
+    //Normalize angle
+    if (x_diff[3] > M_PI) {
+      x_diff[3] -= 2.0 * M_PI;
+    } else if (x_diff[3] <-M_PI) {
+      x_diff[3] += 2.0 * M_PI;
+    }
     Tc = Tc +weights_[i] * x_diff * z_diff.transpose();
   }
   //measurement covariance matrix
   MatrixXd S = MatrixXd(n_z, n_z);
   S.fill(0.0);
-  for (int i = 0; i < n_sig_; ++i) { 
+  for (int i = 0; i < n_sig_; ++i) {
     VectorXd z_diff = Zsig.col(i) - z_pred;
-    //angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-    while (z_diff(1) <-M_PI) z_diff(1) += 2.0 * M_PI;
+    //Normalize angle
+    if (z_diff[1] > M_PI) {
+      z_diff[1] -= 2.0 * M_PI;
+    } else if (z_diff[1] <-M_PI) {
+      z_diff[1] += 2.0 * M_PI;
+    }
     S = S + weights_[i] * z_diff * z_diff.transpose();
   }
   //add noise covariance matrix
@@ -330,9 +342,12 @@ void UKF::Update(MeasurementPackage meas_package,
   MatrixXd K = Tc * S.inverse();
   //residual
   VectorXd z_diff = z - z_pred;
-  //angle normalization
-  while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-  while (z_diff(1) <-M_PI) z_diff(1) += 2.0 * M_PI;
+  //Normalize angle
+  if (z_diff[1] > M_PI) {
+    z_diff[1] -= 2.0 * M_PI;
+  } else if (z_diff[1] <-M_PI) {
+    z_diff[1] += 2.0 * M_PI;
+  }
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
