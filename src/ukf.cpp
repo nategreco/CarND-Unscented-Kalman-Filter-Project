@@ -226,9 +226,15 @@ MatrixXd UKF::Prediction(double delta_t) {
  */
 void UKF::UpdateLidar(MeasurementPackage meas_package, MatrixXd Xsig_pred) {
   //Predict Measurement
-
+  int n_z = 2;
+  MatrixXd Zsig = Xsig_pred.block(0, 0, n_z, n_sig_);
+  VectorXd z_pred = VectorXd(n_z); //mean predicted measurement
+  z_pred.fill(0.0);
+  for (int i=0; i < n_sig_; ++i) {
+      z_pred = z_pred + weights_[i] * Zsig.col(i);
+  }
   //Update State
-  //Update(meas_package, Xsig_pred, z_pred, Zsig, n_z);
+  Update(meas_package, Xsig_pred, z_pred, Zsig, n_z);
 }
 
 /**
