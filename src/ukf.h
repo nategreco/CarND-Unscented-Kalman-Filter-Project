@@ -92,19 +92,35 @@ public:
    * matrix
    * @param delta_t Time between k and k+1 in s
    */
-  void Prediction(double delta_t);
+  MatrixXd Prediction(double delta_t);
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
+   * @param Xsig_pred Predicted sigma points
    */
-  void UpdateLidar(MeasurementPackage meas_package);
+  void UpdateLidar(MeasurementPackage meas_package, MatrixXd Xsig_pred);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
+   * @param Xsig_pred Predicted sigma points
    */
-  void UpdateRadar(MeasurementPackage meas_package);
+  void UpdateRadar(MeasurementPackage meas_package, MatrixXd Xsig_pred);
+
+  /**
+   * Common update function called by both UpdateLidar() and UpdateRadar()
+   * @param meas_package The measurement at k+1
+   * @param Xsig_pred Predicted sigma points
+   * @param z_pred The transformed prediction in measurement space
+   * @param Zsig The transformed sigma points in measurement space
+   * @param n_z The number of measurement components
+   */
+  void Update(MeasurementPackage meas_package,
+              MatrixXd Xsig_pred,
+              VectorXd z_pred,
+              MatrixXd Zsig,
+              int n_z);
 };
 
 #endif /* UKF_H */
