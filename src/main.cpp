@@ -57,6 +57,7 @@ int main()
           // j[1] is the data JSON object
           
           string sensor_measurment = j[1]["sensor_measurement"];
+		  std::cout << sensor_measurment << std::endl;
           
           MeasurementPackage meas_package;
           istringstream iss(sensor_measurment);
@@ -77,7 +78,6 @@ int main()
           		iss >> timestamp;
           		meas_package.timestamp_ = timestamp;
           } else if (sensor_type.compare("R") == 0) {
-
       	  		meas_package.sensor_type_ = MeasurementPackage::RADAR;
           		meas_package.raw_measurements_ = VectorXd(3);
           		float ro;
