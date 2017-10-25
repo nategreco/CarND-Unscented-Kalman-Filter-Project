@@ -75,11 +75,9 @@ UKF::UKF() {
 
   // Weights of sigma points
   weights_ = VectorXd(n_sig_);
-  double weight_0 = lambda_ / (lambda_ + n_aug_);
-  weights_[0] = weight_0;
+  weights_[0] = lambda_ / (lambda_ + n_aug_);
   for (int i = 1; i < n_sig_; ++i) {
-    double weight = 0.5 / (n_aug_ + lambda_);
-    weights_[i] = weight;
+    weights_[i] = 0.5 / (n_aug_ + lambda_);
   }
 
   // Lidar noise covariance matrix
@@ -130,6 +128,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     time_us_ = meas_package.timestamp_ - (0.05 * 1000000.0);
     //Flag initialized
     is_initialized_ = true;
+    return;
   }
   
   //Get time elapsed  in seconds
