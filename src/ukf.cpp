@@ -71,6 +71,17 @@ UKF::UKF() {
     double weight = 0.5 / (n_aug_ + lambda_);
     weights_[i] = weight;
   }
+
+  // Lidar noise covariance matrix
+  R_lidar_ = MatrixXd(2, 2); 
+  R_lidar_ << std_laspx_ * std_laspx_,0,
+              0,std_laspy_ * std_laspy_;
+
+  // Radar noise covariance matrix
+  R_radar_ = MatrixXd(3, 3); 
+  R_radar_ << std_radr_ * std_radr_, 0, 0,
+              0, std_radphi_ * std_radphi_, 0,
+              0, 0,std_radrd_ * std_radrd_;
 }
 
 UKF::~UKF() {}
@@ -262,20 +273,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package, MatrixXd Xsig_pred) {
   for (int i=0; i < n_sig_; ++i) {
       z_pred = z_pred + weights_[i] * Zsig.col(i);
   }
-  MatrixXd S = MatrixXd(n_z, n_z); //measurement covariance matrix S
-  S.fill(0.0);
-  for (int i = 0; i < n_sig_; ++i) {
-    VectorXd z_diff = Zsig.col(i) - z_pred; //residual
-    //angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-    S = S + weights_[i] * z_diff * z_diff.transpose();
-  }
-  MatrixXd R = MatrixXd(n_z, n_z); //add measurement noise covariance matrix
-  R << std_radr_*std_radr_, 0, 0,
-       0, std_radphi_*std_radphi_, 0,
-       0, 0,std_radrd_*std_radrd_;
-  S = S + R;
 
   //Update State
   Update(meas_package, Xsig_pred, z_pred, Zsig, n_z);
@@ -322,6 +319,12 @@ void UKF::Update(MeasurementPackage meas_package,
     while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
     while (z_diff(1) <-M_PI) z_diff(1) += 2.0 * M_PI;
     S = S + weights_[i] * z_diff * z_diff.transpose();
+  }
+  //add noise covariance matrix
+  if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      S = S + R_radar_;
+  } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+      S = S + R_lidar_;
   }
   //Kalman gain K;
   MatrixXd K = Tc * S.inverse();
