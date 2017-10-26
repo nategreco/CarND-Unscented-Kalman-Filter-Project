@@ -26,7 +26,7 @@ UKF::UKF() {
   use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
-  use_radar_ = false;
+  use_radar_ = true;
 
   // initial state vector
   x_ = VectorXd(5);
@@ -154,16 +154,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  * measurement and this one.
  */
 MatrixXd UKF::Prediction(double delta_t) {
-  //Generate Sigma Points
-  MatrixXd Xsig = MatrixXd(n_x_, n_sig_);
-  MatrixXd A = P_.llt().matrixL();
-  Xsig.col(0) = x_;
-  for (int i = 0; i < n_x_; ++i)
-  {
-    Xsig.col(i + 1)     = x_ + sqrt(lambda_ + n_x_) * A.col(i);
-    Xsig.col(i + 1 + n_x_) = x_ - sqrt(lambda_ + n_x_) * A.col(i);
-  }
-  
   //Augment Sigma Points
   VectorXd x_aug = VectorXd(n_aug_); //create augmented mean state
   x_aug.fill(0.0);
@@ -271,7 +261,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package, MatrixXd Xsig_pred) {
     double v2 = sin(yaw)*v;
     Zsig(0,i) = sqrt(p_x*p_x + p_y*p_y);                        //r
     Zsig(1,i) = atan2(p_y,p_x);                                 //phi
-    Zsig(2,i) = (p_x*v1 + p_y*v2 ) / sqrt(p_x*p_x + p_y*p_y);   //r_dot
+    //Prevent division by zero
+    if (fabs(Zsig(0,i)) < 0.0001) Zsig(0,i) = 0.0001;           //phi
+    Zsig(2,i) = (p_x*v1 + p_y*v2 ) / Zsig(0,i);                 //r_dot
   }
 
   //Update State
@@ -302,11 +294,15 @@ void UKF::Update(MeasurementPackage meas_package,
     //residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
     //Normalize angle
-    normalizeAngle(z_diff[1]);
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      normalizeAngle(z_diff[1]);
+    }
     // state difference
     VectorXd x_diff = Xsig_pred.col(i) - x_;
     //Normalize angle
-    normalizeAngle(x_diff[3]);
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      normalizeAngle(z_diff[1]);
+    }
     Tc = Tc + weights_[i] * x_diff * z_diff.transpose();
   }
   //measurement covariance matrix
@@ -315,7 +311,9 @@ void UKF::Update(MeasurementPackage meas_package,
   for (int i = 0; i < n_sig_; ++i) {
     VectorXd z_diff = Zsig.col(i) - z_pred;
     //Normalize angle
-    normalizeAngle(z_diff[1]);
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      normalizeAngle(z_diff[1]);
+    }
     S = S + weights_[i] * z_diff * z_diff.transpose();
   }
   //add noise covariance matrix
@@ -329,7 +327,9 @@ void UKF::Update(MeasurementPackage meas_package,
   //residual
   VectorXd z_diff = z - z_pred;
   //Normalize angle
-  normalizeAngle(z_diff[1]);
+  if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+    normalizeAngle(z_diff[1]);
+  }
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K * S * K.transpose();
