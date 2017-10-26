@@ -57,7 +57,6 @@ int main()
           // j[1] is the data JSON object
           
           string sensor_measurment = j[1]["sensor_measurement"];
-		  std::cout << sensor_measurment << std::endl;
           
           MeasurementPackage meas_package;
           istringstream iss(sensor_measurment);

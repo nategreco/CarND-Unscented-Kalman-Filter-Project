@@ -3,6 +3,8 @@
 #include <iostream>
 #include <math.h>
 
+#define MIN_VAL 0.0001
+
 using namespace std;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -101,7 +103,6 @@ UKF::~UKF() {}
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   //Check if initialized
   if (!is_initialized_) {
-    std::cout << "Initializing UKF..." << std::endl;
     //Use initial measurement for initialization
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       //Convert to cartesian coordinates
@@ -120,9 +121,9 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
     }
     //Prevent division by zero
-    if (fabs(x_[0]) < 0.0001 && fabs(x_[1]) < 0.0001) {
-      x_[0] = 0.0001;
-      x_[1] = 0.0001;
+    if (fabs(x_[0]) < MIN_VAL && fabs(x_[1]) < MIN_VAL) {
+      x_[0] = MIN_VAL;
+      x_[1] = MIN_VAL;
     }
     //Force initial dt = 0.5s
     time_us_ = meas_package.timestamp_ - (0.05 * 1000000.0);
@@ -145,7 +146,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_) {
       UpdateLidar(meas_package, Xsig_pred);
   }
-  std::cout << "Update complete, x_: " << x_ << std::endl;
 }
 
 /**
@@ -188,7 +188,7 @@ MatrixXd UKF::Prediction(double delta_t) {
     double px_p, py_p;
 
     //avoid division by zero
-    if (fabs(yawd) > 0.0001) {
+    if (fabs(yawd) > MIN_VAL) {
         px_p = p_x + v / yawd * ( sin (yaw + yawd * delta_t) - sin(yaw));
         py_p = p_y + v / yawd * ( cos(yaw) - cos(yaw + yawd * delta_t) );
     } else {
@@ -217,9 +217,11 @@ MatrixXd UKF::Prediction(double delta_t) {
 
   //Predict Mean and Covraiance
   x_.fill(0.0);
+  for (int i = 0; i< n_sig_; ++i ) {
+    x_ = x_ + weights_[i] * Xsig_pred.col(i);
+  }
   P_.fill(0.0);
   for (int i = 0; i < n_sig_; ++i) {
-    x_ = x_ + weights_[i] * Xsig_pred.col(i);
     VectorXd x_diff = Xsig_pred.col(i) - x_;
     //Normalize angle
     normalizeAngle(x_diff[3]);
@@ -262,7 +264,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package, MatrixXd Xsig_pred) {
     Zsig(0,i) = sqrt(p_x*p_x + p_y*p_y);                        //r
     Zsig(1,i) = atan2(p_y,p_x);                                 //phi
     //Prevent division by zero
-    if (fabs(Zsig(0,i)) < 0.0001) Zsig(0,i) = 0.0001;           //phi
+    if (fabs(Zsig(0,i)) < MIN_VAL) Zsig(0,i) = MIN_VAL;           //r
     Zsig(2,i) = (p_x*v1 + p_y*v2 ) / Zsig(0,i);                 //r_dot
   }
 
