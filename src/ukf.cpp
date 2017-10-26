@@ -9,8 +9,8 @@ using Eigen::VectorXd;
 using std::vector;
 
 void normalizeAngle (double &angle) {
-  while (angle > M_PI) angle =- M_PI;
-  while (angle < M_PI) angle =+ M_PI;
+  while (angle > M_PI) angle -= M_PI;
+  while (angle < -M_PI) angle += M_PI;
   return;
 }
 
